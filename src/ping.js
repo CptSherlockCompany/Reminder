@@ -38,13 +38,15 @@ function readJson(file, fallback) {
 }
 
 function parseArgs(argv) {
-  const args = { dryRun: false, now: Date.now(), preview: 0, seed: false };
+  const args = { dryRun: false, now: Date.now(), preview: 0, seed: false, plan: null, send: null };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--dry-run' || a === '-n') args.dryRun = true;
     else if (a === '--now') args.now = parseUtc(argv[++i]);
     else if (a === '--preview') args.preview = Number(argv[++i] ?? 14);
     else if (a === '--seed') args.seed = true;
+    else if (a === '--plan') args.plan = argv[++i];
+    else if (a === '--send') args.send = argv[++i];
     else throw new Error(`Unknown argument: ${a}`);
   }
   return args;
@@ -81,12 +83,30 @@ async function post(url, payload) {
   }
 }
 
+/**
+ * Whether a mention string will actually notify anyone.
+ *
+ * Webhooks only raise a notification for a role written as <@&ROLE_ID>, or for
+ * the literal @everyone / @here. Anything else - "@member", a role's display
+ * name - is delivered as ordinary text and notifies nobody, silently.
+ */
+function mentionNotifies(mention) {
+  return /^<@&\d+>$/.test(mention) || mention === '@everyone' || mention === '@here';
+}
+
 /** Sanity-check the config and report anything that will stop an event firing. */
 function lint(schedule) {
   const notes = [];
   for (const event of schedule.events || []) {
     const missing = unconfigured(event, schedule.phaseCycle);
     if (missing) notes.push(`"${event.id}" (${event.name}) — ${missing}, will not ping`);
+  }
+
+  const seen = new Set([schedule.defaults?.mention, ...(schedule.events || []).map((e) => e.mention)]);
+  for (const mention of seen) {
+    if (mention && !mentionNotifies(mention)) {
+      notes.push(`mention ${JSON.stringify(mention)} will be posted as plain text and notify nobody — a role needs its ID, as "<@&123456789012345678>"`);
+    }
   }
   return notes;
 }
@@ -142,6 +162,21 @@ function preview(schedule, nowMs, days) {
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   loadDotEnv();
+
+  // Second phase: post a payload that `--plan` already recorded.
+  if (args.send) {
+    const payload = readJson(args.send, null);
+    if (!payload) {
+      console.log(`${args.send} does not exist — nothing was planned, nothing to send.`);
+      return;
+    }
+    const url = process.env.DISCORD_WEBHOOK_URL;
+    if (!url) throw new Error('DISCORD_WEBHOOK_URL is not set.');
+    await post(url, payload);
+    console.log(`Posted ${(payload.embeds || []).length} announcement(s).`);
+    return;
+  }
+
   const schedule = readJson(SCHEDULE_PATH);
 
   for (const note of lint(schedule)) console.warn(`  config: ${note}`);
@@ -188,16 +223,28 @@ async function main() {
     return;
   }
 
-  const url = process.env.DISCORD_WEBHOOK_URL;
-  if (!url) throw new Error('DISCORD_WEBHOOK_URL is not set.');
-  await post(url, payload);
-  console.log(`Posted ${result.due.length} announcement(s).`);
-
   state.fired = state.fired || {};
   for (const item of result.due) {
     state.fired[item.event.id] = new Date(item.occurrence).toISOString();
   }
   state.updatedAt = new Date(args.now).toISOString();
+
+  // Two-phase: record first, announce second. `--plan` stops here so the caller
+  // can durably commit state.json before anything reaches the channel. If that
+  // commit is rejected the run fails having said nothing, and the next run
+  // retries. Posting first and failing to record would instead repeat the same
+  // ping every run until the grace window closed.
+  if (args.plan) {
+    fs.writeFileSync(STATE_PATH, JSON.stringify(state, null, 2) + '\n');
+    fs.writeFileSync(args.plan, JSON.stringify(payload, null, 2) + '\n');
+    console.log(`\nPlanned ${result.due.length} announcement(s) into ${args.plan}. Nothing posted yet.`);
+    return;
+  }
+
+  const url = process.env.DISCORD_WEBHOOK_URL;
+  if (!url) throw new Error('DISCORD_WEBHOOK_URL is not set.');
+  await post(url, payload);
+  console.log(`Posted ${result.due.length} announcement(s).`);
   fs.writeFileSync(STATE_PATH, JSON.stringify(state, null, 2) + '\n');
 }
 

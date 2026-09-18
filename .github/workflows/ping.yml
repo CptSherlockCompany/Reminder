@@ -41,30 +41,31 @@ jobs:
       - name: Run tests
         run: node --test test/schedule.test.js
 
-      # The ping is sent before state.json is recorded, so a repo that cannot
-      # accept the state commit would re-announce the same event every run
-      # until the grace window closed. Fail here instead, before anything is
-      # posted. Usually means Settings -> Actions -> General -> Workflow
-      # permissions is set to read-only.
-      - name: Verify we can record state before posting anything
-        run: git push --dry-run origin HEAD:${{ github.ref_name }}
-
-      - name: Check schedule
-        env:
-          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+      # Phase 1 of 2. Works out what is due, records it in state.json and writes
+      # the Discord payload to a file. Nothing is posted here.
+      - name: Work out what is due
+        id: plan
         run: |
           args=()
           if [ -n "${{ inputs.preview_days }}" ]; then
             args+=(--preview "${{ inputs.preview_days }}")
           elif [ "${{ inputs.dry_run }}" = "true" ]; then
             args+=(--dry-run)
+          else
+            args+=(--plan payload.json)
           fi
           if [ -n "${{ inputs.now }}" ]; then
             args+=(--now "${{ inputs.now }}")
           fi
           node src/ping.js "${args[@]}"
 
-      - name: Record what was announced
+      # The recording is committed BEFORE anything is announced. If this push is
+      # rejected - branch protection, or read-only workflow permissions - the run
+      # fails here having said nothing, and the next run simply tries again.
+      # Announcing first and then failing to record would repeat the same ping on
+      # every run until the grace window closed.
+      - name: Record what is about to be announced
+        if: hashFiles('payload.json') != ''
         run: |
           if [ -n "$(git status --porcelain state.json)" ]; then
             git config user.name  'github-actions[bot]'
@@ -73,3 +74,10 @@ jobs:
             git commit -m 'Record announced events'
             git push
           fi
+
+      # Phase 2 of 2. Only reached once the recording is durably pushed.
+      - name: Announce
+        if: hashFiles('payload.json') != ''
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: node src/ping.js --send payload.json
