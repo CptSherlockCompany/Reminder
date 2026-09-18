@@ -187,8 +187,13 @@ function buildSummaryPayload(schedule, weekStartMs) {
 
   const lines = [];
   for (const [day, items] of byDay) {
-    const weekday = new Date(day + 'T00:00:00Z').toLocaleDateString('en-GB', { weekday: 'long', timeZone: 'UTC' });
-    lines.push(`**${weekday}**`);
+    // "### " is the smallest markdown heading — one step above body text, which
+    // is enough to separate the days without making the list tower. The date is
+    // spelled out because a week can straddle two months.
+    const label = new Date(day + 'T00:00:00Z').toLocaleDateString('en-GB', {
+      weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC',
+    });
+    lines.push(`### ${label}`);
     for (const r of items) {
       lines.push(` <t:${Math.floor(r.occ / 1000)}:t> · ${r.name}`);
     }

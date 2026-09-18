@@ -480,13 +480,13 @@ test('the summary reflects the phase: Disorder has no Altar and a Sunday gatheri
   assert.match(disorder.embeds[0].title, /Battle of Disorder/);
   assert.ok(!text.includes('Altar of Trial'), 'Altar must not appear in a Disorder week');
   assert.ok(text.includes('Gathering Speed-up Skill'), 'Sunday gathering should appear');
-  assert.match(text, /\*\*Sunday\*\*/);
+  assert.match(text, /### Sunday \d+ \w+/);
 
   const confluence = buildSummaryPayload(schedule, parseUtc('2026-10-12'));
   const confText = confluence.embeds[0].description;
   assert.match(confluence.embeds[0].title, /Confluence/);
   assert.ok(confText.includes('Altar of Trial'), 'Altar returns in a Confluence week');
-  assert.match(confText, /\*\*Thursday\*\*/);
+  assert.match(confText, /### Thursday \d+ \w+/);
 });
 
 test('the weekly summary never notifies anyone', () => {
