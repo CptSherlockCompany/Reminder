@@ -480,13 +480,13 @@ test('the summary reflects the phase: Disorder has no Altar and a Sunday gatheri
   assert.match(disorder.embeds[0].title, /Battle of Disorder/);
   assert.ok(!text.includes('Altar of Trial'), 'Altar must not appear in a Disorder week');
   assert.ok(text.includes('Gathering Speed-up Skill'), 'Sunday gathering should appear');
-  assert.match(text, /^## Sunday \d+ \w+$/m);
+  assert.match(text, /^### Sunday \d+ \w+$/m);
 
   const confluence = buildSummaryPayload(schedule, parseUtc('2026-10-12'));
   const confText = confluence.embeds[0].description;
   assert.match(confluence.embeds[0].title, /Confluence/);
   assert.ok(confText.includes('Altar of Trial'), 'Altar returns in a Confluence week');
-  assert.match(confText, /^## Thursday \d+ \w+$/m);
+  assert.match(confText, /^### Thursday \d+ \w+$/m);
 });
 
 test('the weekly summary never notifies anyone', () => {
@@ -510,8 +510,8 @@ test('summary days and entries sit at the intended heading levels', () => {
   const { buildSummaryPayload } = require('../src/ping.js');
   const lines = buildSummaryPayload(schedule, parseUtc('2026-10-12')).embeds[0].description.split('\n');
 
-  const days = lines.filter((l) => /^## [A-Z]/.test(l));
-  const entries = lines.filter((l) => /^### <t:/.test(l));
+  const days = lines.filter((l) => /^### [A-Z]/.test(l));
+  const entries = lines.filter((l) => /^\*\*<t:/.test(l));
   assert.ok(days.length >= 3, `expected several day headings, got ${days.length}`);
   assert.ok(entries.length >= 5, `expected several entries, got ${entries.length}`);
 
@@ -519,5 +519,5 @@ test('summary days and entries sit at the intended heading levels', () => {
   assert.equal(days.length + entries.length, lines.length, `unclassified lines: ${lines}`);
 
   // Days must be a larger heading than the entries beneath them.
-  assert.ok(days.every((l) => !l.startsWith('###')), 'a day heading dropped to entry size');
+  assert.ok(days.every((l) => l.startsWith('### ')), 'a day heading lost its heading level');
 });

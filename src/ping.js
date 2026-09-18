@@ -194,9 +194,9 @@ function buildSummaryPayload(schedule, weekStartMs) {
     const label = new Date(day + 'T00:00:00Z').toLocaleDateString('en-GB', {
       weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC',
     });
-    lines.push(`## ${label}`);
+    lines.push(`### ${label}`);
     for (const r of items) {
-      lines.push(`### <t:${Math.floor(r.occ / 1000)}:t> · ${r.name}`);
+      lines.push(`**<t:${Math.floor(r.occ / 1000)}:t> · ${r.name}**`);
     }
   }
   if (!lines.length) lines.push('_Nothing scheduled this week._');
