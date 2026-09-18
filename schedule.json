@@ -2,7 +2,7 @@
   "$comment": "All times are UTC. anchorDate: null = still to be confirmed; those events are skipped with a warning until filled in.",
   "defaults": {
     "leadMinutes": 45,
-    "mention": "<@&900039204313129060>"
+    "mention": "<@&1550551558192890047>"
   },
   "phaseCycle": {
     "$comment": "Context only — these weeks are never announced. anchorWeekStart must be the Monday that begins a Confluence week; it exists solely so Altar of Trial can be suppressed during Battle of Disorder weeks.",
