@@ -2,12 +2,12 @@ name: Alliance event pinger
 
 on:
   schedule:
-    # Every 15 minutes, deliberately off the quarter-hour. GitHub queues cron
-    # runs on a best-effort basis and the :00/:15/:30/:45 marks are the most
-    # contended, so runs there are the likeliest to be delayed or dropped
-    # altogether. The exact minute does not matter: the script works off a grace
-    # window plus state.json rather than assuming it runs on time.
-    - cron: '3,18,33,48 * * * *'
+    # Every 5 minutes, the shortest interval GitHub accepts. It will not honour
+    # most of these - scheduled runs on free public runners are routinely delayed
+    # and frequently dropped - so the point is attempts, not precision. Twelve
+    # chances an hour means a ping lands near its intended minute even when most
+    # are skipped. state.json keeps the extra runs from repeating anything.
+    - cron: '*/5 * * * *'
   workflow_dispatch:
     inputs:
       dry_run:

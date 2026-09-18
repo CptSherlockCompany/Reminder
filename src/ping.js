@@ -58,8 +58,11 @@ function fmtUtc(ms) {
 
 function buildEmbed(item) {
   const secs = Math.floor(item.occurrence / 1000);
+  // No hardcoded "starts in N minutes": a scheduled run can land well after its
+  // intended minute, which would make that line a lie. <t:...:R> is rendered by
+  // Discord at read time, so it stays correct however late the message is - and
+  // in each reader's own timezone.
   const lines = [`**<t:${secs}:F>** · <t:${secs}:R>`];
-  if (item.leadMinutes > 0) lines.push(`Starts in ${item.leadMinutes} minutes.`);
   if (item.event.note) lines.push(item.event.note);
   if (item.phase) lines.push(`_Current week: ${item.phase.phase}_`);
 
