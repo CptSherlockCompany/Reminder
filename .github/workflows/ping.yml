@@ -22,6 +22,10 @@ on:
         description: 'Instead of pinging, list occurrences for the next N days'
         type: string
         default: ''
+      repost_summary:
+        description: 'Post this week''s summary again, even if one is recorded'
+        type: boolean
+        default: false
 
 concurrency:
   group: pinger
@@ -55,6 +59,9 @@ jobs:
             args+=(--dry-run)
           else
             args+=(--plan payload.json)
+          fi
+          if [ "${{ inputs.repost_summary }}" = "true" ]; then
+            args+=(--force-summary)
           fi
           if [ -n "${{ inputs.now }}" ]; then
             args+=(--now "${{ inputs.now }}")

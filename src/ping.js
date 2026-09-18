@@ -40,7 +40,7 @@ function readJson(file, fallback) {
 }
 
 function parseArgs(argv) {
-  const args = { dryRun: false, now: Date.now(), preview: 0, seed: false, plan: null, send: null };
+  const args = { dryRun: false, now: Date.now(), preview: 0, seed: false, plan: null, send: null, forceSummary: false };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--dry-run' || a === '-n') args.dryRun = true;
@@ -49,6 +49,7 @@ function parseArgs(argv) {
     else if (a === '--seed') args.seed = true;
     else if (a === '--plan') args.plan = argv[++i];
     else if (a === '--send') args.send = argv[++i];
+    else if (a === '--force-summary') args.forceSummary = true;
     else throw new Error(`Unknown argument: ${a}`);
   }
   return args;
@@ -322,7 +323,11 @@ async function main() {
   // The summary is owed whenever the week has turned since the last one posted.
   const thisWeek = isoDate(weekStart(args.now));
   const lastSummary = state.summary || {};
-  const summaryDue = schedule.weeklySummary !== false && lastSummary.weekStart !== thisWeek;
+  // --force-summary reposts even when this week's is already recorded, for when
+  // the message was deleted by hand. The stale id is still passed along so the
+  // old message is cleaned up if it does somehow still exist; a 404 is fine.
+  const summaryDue = schedule.weeklySummary !== false
+    && (args.forceSummary || lastSummary.weekStart !== thisWeek);
 
   if (!result.due.length && !summaryDue) {
     console.log(`Nothing due at ${fmtUtc(args.now)}.`);

@@ -144,6 +144,10 @@ rather than the Thursday one.
 
 Set `"weeklySummary": false` at the top level of `schedule.json` to turn it off.
 
+If you delete the summary by hand, the recorded id makes the next run think
+it is still up. Run the workflow with **repost_summary** ticked (or
+`node src/ping.js --force-summary` locally) to post a fresh one.
+
 Deleting works because a webhook can remove its own messages. Posting with
 `?wait=true` returns the message id, which is kept in `state.json` until the
 following week uses it to `DELETE .../messages/<id>`. There is no age limit on
