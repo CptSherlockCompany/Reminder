@@ -129,6 +129,26 @@ suppressed for the entire run.
 To get a role ID: enable Developer Mode in Discord, then right-click the role →
 Copy ID, and write it as `"<@&123456789012345678>"`.
 
+## The weekly summary
+
+At the start of each week one message lists everything expected that week,
+grouped by day. When the week turns it is deleted and replaced, so the channel
+never accumulates them.
+
+It is deliberately silent — no role mention. The per-event reminders already
+notify; a second notification for something nobody has to act on yet is noise.
+
+The summary reflects the phase cycle like everything else: a Disorder week
+lists no Altar of Trial except its final day, and shows the Sunday gathering
+rather than the Thursday one.
+
+Set `"weeklySummary": false` at the top level of `schedule.json` to turn it off.
+
+Deleting works because a webhook can remove its own messages. Posting with
+`?wait=true` returns the message id, which is kept in `state.json` until the
+following week uses it to `DELETE .../messages/<id>`. There is no age limit on
+deleting a single message this way.
+
 ## How it avoids double and missed pings
 
 Actions cron is best-effort: runs drift, and occasionally one is dropped. So the

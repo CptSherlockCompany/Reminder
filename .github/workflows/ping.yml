@@ -83,3 +83,19 @@ jobs:
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: node src/ping.js --send payload.json
+
+      # A posted summary's message id only exists once Discord has accepted it,
+      # so it cannot be part of the commit above. Losing this write costs only a
+      # stale summary left in the channel - never a duplicate post, because the
+      # week was already claimed before anything was sent.
+      - name: Record the summary's message id
+        if: hashFiles('payload.json') != ''
+        run: |
+          if [ -n "$(git status --porcelain state.json)" ]; then
+            git config user.name  'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git add state.json
+            git commit -m 'Record summary message id'
+            git pull --rebase --autostash
+            git push
+          fi

@@ -455,3 +455,52 @@ test('this Sunday stays quiet because it falls in a Confluence week', () => {
   const res = due(schedule, parseUtc('2026-09-20T07:15'), {}, 120);
   assert.deepEqual(res.due.map((d) => d.event.id), [], 'nothing is due on 20 Sep morning');
 });
+
+test('the weekly summary covers exactly its own Monday-to-Sunday week', () => {
+  const schedule = require('../schedule.json');
+  const { weekOccurrences } = require('../src/ping.js');
+  const monday = parseUtc('2026-09-21');
+
+  const rows = weekOccurrences(schedule, monday);
+  assert.ok(rows.length > 0, 'the week should not be empty');
+  for (const r of rows) {
+    assert.ok(r.occ >= monday, `${iso(r.occ)} is before the week starts`);
+    assert.ok(r.occ < monday + 7 * 24 * 3600e3, `${iso(r.occ)} is after the week ends`);
+  }
+  // Sorted, so the summary reads in chronological order.
+  assert.deepEqual(rows.map((r) => r.occ), [...rows.map((r) => r.occ)].sort((a, b) => a - b));
+});
+
+test('the summary reflects the phase: Disorder has no Altar and a Sunday gathering', () => {
+  const schedule = require('../schedule.json');
+  const { buildSummaryPayload } = require('../src/ping.js');
+
+  const disorder = buildSummaryPayload(schedule, parseUtc('2026-09-21'));
+  const text = disorder.embeds[0].description;
+  assert.match(disorder.embeds[0].title, /Battle of Disorder/);
+  assert.ok(!text.includes('Altar of Trial'), 'Altar must not appear in a Disorder week');
+  assert.ok(text.includes('Gathering Speed-up Skill'), 'Sunday gathering should appear');
+  assert.match(text, /\*\*Sunday\*\*/);
+
+  const confluence = buildSummaryPayload(schedule, parseUtc('2026-10-12'));
+  const confText = confluence.embeds[0].description;
+  assert.match(confluence.embeds[0].title, /Confluence/);
+  assert.ok(confText.includes('Altar of Trial'), 'Altar returns in a Confluence week');
+  assert.match(confText, /\*\*Thursday\*\*/);
+});
+
+test('the weekly summary never notifies anyone', () => {
+  const schedule = require('../schedule.json');
+  const { buildSummaryPayload } = require('../src/ping.js');
+  const p = buildSummaryPayload(schedule, parseUtc('2026-09-21'));
+  assert.deepEqual(p.allowed_mentions, { parse: [] });
+  assert.equal(p.content, undefined, 'a summary carries no mention of its own');
+});
+
+test('the final Disorder day shows up in the summary for that week', () => {
+  const schedule = require('../schedule.json');
+  const { buildSummaryPayload } = require('../src/ping.js');
+  // Week of 28 Sep is the second Disorder week; Altar returns on Sunday 4 Oct.
+  const text = buildSummaryPayload(schedule, parseUtc('2026-09-28')).embeds[0].description;
+  assert.ok(text.includes('Altar of Trial'), 'the final-day exception should be listed');
+});

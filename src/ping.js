@@ -3,7 +3,9 @@
 
 const fs = require('fs');
 const path = require('path');
-const { due, occurrencesBetween, phaseAt, unconfigured, parseUtc } = require('./schedule.js');
+const {
+  due, occurrencesBetween, phaseAt, unconfigured, parseUtc, weekStart, WEEK_MS,
+} = require('./schedule.js');
 
 const ROOT = path.join(__dirname, '..');
 const SCHEDULE_PATH = path.join(ROOT, 'schedule.json');
@@ -78,15 +80,46 @@ function buildEmbed(item) {
   };
 }
 
-async function post(url, payload) {
+async function discord(method, url, payload) {
   const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
+    method,
+    headers: payload ? { 'Content-Type': 'application/json' } : undefined,
+    body: payload ? JSON.stringify(payload) : undefined,
   });
   if (!res.ok) {
     const body = await res.text().catch(() => '');
     throw new Error(`Discord returned ${res.status} ${res.statusText}: ${body.slice(0, 500)}`);
+  }
+  return res;
+}
+
+async function post(url, payload) {
+  await discord('POST', url, payload);
+}
+
+/**
+ * Post and return the created message's id.
+ *
+ * `?wait=true` makes the webhook respond with the message object instead of an
+ * empty 204. The id is what lets the weekly summary be deleted again later.
+ */
+async function postAndGetId(url, payload) {
+  const sep = url.includes('?') ? '&' : '?';
+  const res = await discord('POST', `${url}${sep}wait=true`, payload);
+  const body = await res.json().catch(() => null);
+  return body && body.id ? String(body.id) : null;
+}
+
+/** Delete a message this webhook posted earlier. Missing is treated as success. */
+async function deleteMessage(url, messageId) {
+  const base = url.split('?')[0].replace(/\/$/, '');
+  try {
+    await discord('DELETE', `${base}/messages/${messageId}`);
+    return true;
+  } catch (err) {
+    // Already gone, or deleted by hand - either way there is nothing to clean up.
+    if (/ 404 /.test(err.message)) return true;
+    throw err;
   }
 }
 
@@ -116,6 +149,62 @@ function lint(schedule) {
     }
   }
   return notes;
+}
+
+/** "YYYY-MM-DD" in UTC, used to label which week a summary belongs to. */
+function isoDate(ms) {
+  return new Date(ms).toISOString().slice(0, 10);
+}
+
+/** Every occurrence in the Monday-to-Sunday week beginning at `weekStartMs`. */
+function weekOccurrences(schedule, weekStartMs) {
+  const rows = [];
+  for (const event of schedule.events || []) {
+    if (event.enabled === false || unconfigured(event, schedule.phaseCycle)) continue;
+    for (const occ of occurrencesBetween(event, weekStartMs - 1, weekStartMs + WEEK_MS, schedule.phaseCycle)) {
+      rows.push({ occ, name: event.name });
+    }
+  }
+  return rows.sort((a, b) => a.occ - b.occ);
+}
+
+/**
+ * The week-ahead summary.
+ *
+ * Deliberately silent: the per-event reminders already carry the mention, and a
+ * second notification for something nobody has to act on yet is just noise.
+ */
+function buildSummaryPayload(schedule, weekStartMs) {
+  const rows = weekOccurrences(schedule, weekStartMs);
+  const phase = phaseAt(weekStartMs, schedule.phaseCycle);
+
+  const byDay = new Map();
+  for (const r of rows) {
+    const day = isoDate(r.occ);
+    if (!byDay.has(day)) byDay.set(day, []);
+    byDay.get(day).push(r);
+  }
+
+  const lines = [];
+  for (const [day, items] of byDay) {
+    const weekday = new Date(day + 'T00:00:00Z').toLocaleDateString('en-GB', { weekday: 'long', timeZone: 'UTC' });
+    lines.push(`**${weekday}**`);
+    for (const r of items) {
+      lines.push(` <t:${Math.floor(r.occ / 1000)}:t> · ${r.name}`);
+    }
+  }
+  if (!lines.length) lines.push('_Nothing scheduled this week._');
+
+  const ends = weekStartMs + WEEK_MS;
+  return {
+    embeds: [{
+      title: `This week${phase ? ` · ${phase.phase}` : ''}`,
+      description: lines.join('\n'),
+      color: COLOR,
+      footer: { text: `${isoDate(weekStartMs)} to ${isoDate(ends - 1)} · replaced when the week turns` },
+    }],
+    allowed_mentions: { parse: [] },
+  };
 }
 
 /**
@@ -170,17 +259,38 @@ async function main() {
   const args = parseArgs(process.argv.slice(2));
   loadDotEnv();
 
-  // Second phase: post a payload that `--plan` already recorded.
+  // Second phase: carry out what `--plan` already recorded.
   if (args.send) {
-    const payload = readJson(args.send, null);
-    if (!payload) {
+    const plan = readJson(args.send, null);
+    if (!plan) {
       console.log(`${args.send} does not exist — nothing was planned, nothing to send.`);
       return;
     }
     const url = process.env.DISCORD_WEBHOOK_URL;
     if (!url) throw new Error('DISCORD_WEBHOOK_URL is not set.');
-    await post(url, payload);
-    console.log(`Posted ${(payload.embeds || []).length} announcement(s).`);
+
+    if (plan.announcement) {
+      await post(url, plan.announcement);
+      console.log(`Posted ${(plan.announcement.embeds || []).length} announcement(s).`);
+    }
+
+    if (plan.summary) {
+      // Last week's summary goes first, so a failure to post the new one cannot
+      // leave the channel with two.
+      if (plan.summary.deleteId) {
+        await deleteMessage(url, plan.summary.deleteId);
+        console.log(`Deleted the previous week's summary.`);
+      }
+      const id = await postAndGetId(url, plan.summary.payload);
+      console.log(`Posted this week's summary${id ? ` (message ${id})` : ''}.`);
+
+      // Record the id so next week can delete it. This write happens after
+      // posting because the id does not exist until then; losing it costs only
+      // a stale summary left in the channel, never a duplicate post.
+      const state = readJson(STATE_PATH, { fired: {} });
+      state.summary = { weekStart: plan.summary.weekStart, messageId: id };
+      fs.writeFileSync(STATE_PATH, JSON.stringify(state, null, 2) + '\n');
+    }
     return;
   }
 
@@ -204,7 +314,12 @@ async function main() {
 
   for (const w of result.warnings) console.warn(`  ${w}`);
 
-  if (!result.due.length) {
+  // The summary is owed whenever the week has turned since the last one posted.
+  const thisWeek = isoDate(weekStart(args.now));
+  const lastSummary = state.summary || {};
+  const summaryDue = schedule.weeklySummary !== false && lastSummary.weekStart !== thisWeek;
+
+  if (!result.due.length && !summaryDue) {
     console.log(`Nothing due at ${fmtUtc(args.now)}.`);
     return;
   }
@@ -212,6 +327,7 @@ async function main() {
   for (const item of result.due) {
     console.log(`Due: ${item.event.name} at ${fmtUtc(item.occurrence)}`);
   }
+  if (summaryDue) console.log(`Due: weekly summary for the week of ${thisWeek}`);
 
   const mentions = [...new Set(
     result.due
@@ -219,14 +335,20 @@ async function main() {
       .filter(Boolean)
   )];
 
-  const payload = {
+  const announcement = result.due.length ? {
     content: mentions.join(' ') || undefined,
     embeds: result.due.slice(0, 10).map(buildEmbed),
     allowed_mentions: { parse: mentions.length ? ['roles', 'everyone'] : [] },
-  };
+  } : null;
+
+  const summary = summaryDue ? {
+    weekStart: thisWeek,
+    deleteId: lastSummary.messageId || null,
+    payload: buildSummaryPayload(schedule, weekStart(args.now)),
+  } : null;
 
   if (args.dryRun) {
-    console.log('\n--dry-run, would POST:\n' + JSON.stringify(payload, null, 2));
+    console.log('\n--dry-run, would send:\n' + JSON.stringify({ announcement, summary }, null, 2));
     return;
   }
 
@@ -235,6 +357,10 @@ async function main() {
     state.fired[item.event.id] = new Date(item.occurrence).toISOString();
   }
   state.updatedAt = new Date(args.now).toISOString();
+  // Claim the summary for this week before posting it. If the run dies between
+  // here and the post, the week is simply missed - far better than every run
+  // for the next seven days posting another copy.
+  if (summary) state.summary = { weekStart: thisWeek, messageId: null };
 
   // Two-phase: record first, announce second. `--plan` stops here so the caller
   // can durably commit state.json before anything reaches the channel. If that
@@ -243,19 +369,32 @@ async function main() {
   // ping every run until the grace window closed.
   if (args.plan) {
     fs.writeFileSync(STATE_PATH, JSON.stringify(state, null, 2) + '\n');
-    fs.writeFileSync(args.plan, JSON.stringify(payload, null, 2) + '\n');
-    console.log(`\nPlanned ${result.due.length} announcement(s) into ${args.plan}. Nothing posted yet.`);
+    fs.writeFileSync(args.plan, JSON.stringify({ announcement, summary }, null, 2) + '\n');
+    console.log(`\nPlanned into ${args.plan}: ${result.due.length} announcement(s)${summary ? ' and a weekly summary' : ''}. Nothing posted yet.`);
     return;
   }
 
   const url = process.env.DISCORD_WEBHOOK_URL;
   if (!url) throw new Error('DISCORD_WEBHOOK_URL is not set.');
-  await post(url, payload);
-  console.log(`Posted ${result.due.length} announcement(s).`);
+
+  if (announcement) {
+    await post(url, announcement);
+    console.log(`Posted ${result.due.length} announcement(s).`);
+  }
+  if (summary) {
+    if (summary.deleteId) await deleteMessage(url, summary.deleteId);
+    state.summary = { weekStart: thisWeek, messageId: await postAndGetId(url, summary.payload) };
+    console.log(`Posted this week's summary.`);
+  }
   fs.writeFileSync(STATE_PATH, JSON.stringify(state, null, 2) + '\n');
 }
 
-main().catch((err) => {
-  console.error(`Error: ${err.message}`);
-  process.exit(1);
-});
+// Only run when invoked directly, so the tests can import the helpers below.
+if (require.main === module) {
+  main().catch((err) => {
+    console.error(`Error: ${err.message}`);
+    process.exit(1);
+  });
+}
+
+module.exports = { buildEmbed, buildSummaryPayload, weekOccurrences, mentionNotifies, lint, isoDate };
