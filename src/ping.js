@@ -62,7 +62,9 @@ function buildEmbed(item) {
   // intended minute, which would make that line a lie. <t:...:R> is rendered by
   // Discord at read time, so it stays correct however late the message is - and
   // in each reader's own timezone.
-  const lines = [`**<t:${secs}:F>** · <t:${secs}:R>`];
+  // "##" is a markdown heading, which Discord renders in embed descriptions two
+  // steps above body text. Headings are already bold, so the ** is dropped.
+  const lines = [`## <t:${secs}:F> · <t:${secs}:R>`];
   if (item.event.note) lines.push(item.event.note);
   if (item.phase) lines.push(`_Current week: ${item.phase.phase}_`);
 
