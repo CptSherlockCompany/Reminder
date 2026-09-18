@@ -1,0 +1,82 @@
+{
+  "$comment": "All times are UTC. anchorDate: null = still to be confirmed; those events are skipped with a warning until filled in.",
+
+  "defaults": {
+    "leadMinutes": 15,
+    "mention": "@member"
+  },
+
+  "phaseCycle": {
+    "$comment": "Context only — these weeks are never announced. anchorWeekStart must be the Monday that begins a Confluence week; it exists solely so Altar of Trial can be suppressed during Battle of Disorder weeks.",
+    "anchorWeekStart": "2026-10-12",
+    "phases": [
+      "Confluence",
+      "Battle of Disorder",
+      "Battle of Disorder",
+      "Battle of Destiny"
+    ]
+  },
+
+  "events": [
+    {
+      "id": "skills-friday",
+      "name": "Training Speed-up Skill",
+      "note": "Right after Altar of Trial.",
+      "type": "weekly",
+      "weekday": "friday",
+      "time": "17:00"
+    },
+    {
+      "id": "skills-sunday",
+      "name": "Gathering Speed-up Skill",
+      "type": "weekly",
+      "weekday": "sunday",
+      "time": "08:00"
+    },
+    {
+      "id": "slumbers",
+      "name": "Slumbers of City",
+      "type": "weekly",
+      "weekday": "friday",
+      "times": ["13:00", "14:00", "19:00"]
+    },
+    {
+      "id": "altar",
+      "name": "Altar of Trial",
+      "$comment": "Quiet through the Disorder weeks except their final day, the Sunday that ends the second one.",
+      "type": "interval",
+      "intervalDays": 2,
+      "anchorDate": "2026-09-18",
+      "time": "17:00",
+      "skipDuringPhases": ["Battle of Disorder"],
+      "runsOnFinalDayOfSkippedRun": true
+    },
+    {
+      "id": "showdown",
+      "name": "Alliance Showdown",
+      "type": "weekly",
+      "weekday": "thursday",
+      "time": "12:00"
+    },
+    {
+      "id": "shrine",
+      "name": "Shrine",
+      "$comment": "Every other Sunday. anchorDate must be a Sunday; the code rejects it otherwise.",
+      "type": "interval",
+      "intervalDays": 14,
+      "weekday": "sunday",
+      "anchorDate": "2026-09-27",
+      "time": "16:00"
+    },
+    {
+      "id": "joint",
+      "name": "Joint Competition",
+      "$comment": "Every other Monday, aligned with the phase-cycle week boundary.",
+      "type": "interval",
+      "intervalDays": 14,
+      "weekday": "monday",
+      "anchorDate": "2026-09-21",
+      "time": "12:00"
+    }
+  ]
+}

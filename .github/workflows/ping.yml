@@ -1,0 +1,67 @@
+name: Alliance event pinger
+
+on:
+  schedule:
+    # Every 15 minutes. GitHub queues cron runs on a best-effort basis and can
+    # delay them, which is why the script works off a grace window plus state.json
+    # instead of assuming it runs exactly on the minute.
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Print the payload instead of posting to Discord'
+        type: boolean
+        default: true
+      now:
+        description: 'Pretend it is this UTC time (YYYY-MM-DDTHH:MM), for testing'
+        type: string
+        default: ''
+      preview_days:
+        description: 'Instead of pinging, list occurrences for the next N days'
+        type: string
+        default: ''
+
+concurrency:
+  group: pinger
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run tests
+        run: node --test test/schedule.test.js
+
+      - name: Check schedule
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          args=()
+          if [ -n "${{ inputs.preview_days }}" ]; then
+            args+=(--preview "${{ inputs.preview_days }}")
+          elif [ "${{ inputs.dry_run }}" = "true" ]; then
+            args+=(--dry-run)
+          fi
+          if [ -n "${{ inputs.now }}" ]; then
+            args+=(--now "${{ inputs.now }}")
+          fi
+          node src/ping.js "${args[@]}"
+
+      - name: Record what was announced
+        run: |
+          if [ -n "$(git status --porcelain state.json)" ]; then
+            git config user.name  'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git add state.json
+            git commit -m 'Record announced events'
+            git push
+          fi

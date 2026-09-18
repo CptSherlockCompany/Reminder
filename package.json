@@ -1,0 +1,12 @@
+{
+  "name": "loe-reminder",
+  "version": "1.0.0",
+  "description": "Serverless Discord reminders for alliance events, run entirely by GitHub Actions.",
+  "private": true,
+  "scripts": {
+    "test": "node --test test/schedule.test.js",
+    "preview": "node src/ping.js --preview 14",
+    "dry-run": "node src/ping.js --dry-run"
+  },
+  "license": "MIT"
+}
