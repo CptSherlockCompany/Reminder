@@ -120,6 +120,7 @@ suppressed for the entire run.
 | `leadMinutes` | `defaults` or an event | Ping this many minutes *before* the event. `0` pings at start. |
 | `mention` | `defaults` or an event | Role to ping, as `<@&ROLE_ID>`. `null` posts without pinging. |
 | `enabled` | an event | `false` turns it off without deleting it. |
+| `notBefore` | an event | Skip occurrences before this UTC date. Defers the first announcement; the cadence is unchanged. |
 | `note` | an event | Extra line shown in the announcement. |
 | `weekday` | an `interval` event | Validates the anchor date falls on this day, catching a mistyped anchor. |
 | `runsOnFinalDayOfSkippedRun` | an event | Fire on the last day of a suppressed run instead of skipping it too. |

@@ -27,6 +27,8 @@
     },
     {
       "id": "skills-sunday",
+      "$comment": "Skipped 2026-09-20; first announcement is 2026-09-27.",
+      "notBefore": "2026-09-21",
       "name": "Gathering Speed-up Skill",
       "type": "weekly",
       "weekday": "sunday",

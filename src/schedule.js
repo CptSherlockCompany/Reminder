@@ -162,9 +162,18 @@ function occurrencesBetween(event, fromMs, toMs, cycle) {
 
   hits.sort((a, b) => a - b);
 
+  // `notBefore` defers an event's first announcement: everything earlier is
+  // dropped, while the cadence itself is untouched. Useful for skipping the
+  // next occurrence of an otherwise correct event without disabling it.
+  let kept = hits;
+  if (event.notBefore) {
+    const from = parseUtc(event.notBefore);
+    kept = kept.filter((occ) => occ >= from);
+  }
+
   const skip = event.skipDuringPhases;
-  if (!skip || !skip.length) return hits;
-  return hits.filter((occ) => {
+  if (!skip || !skip.length) return kept;
+  return kept.filter((occ) => {
     const p = phaseAt(occ, cycle);
     if (!p || !skip.includes(p.phase)) return true;
     // Suppressed — unless the event runs on the final day of the run.

@@ -409,3 +409,32 @@ test('a nonsensical time is still rejected', () => {
     assert.throws(() => parseTime(bad), new RegExp('time'), `should reject ${JSON.stringify(bad)}`);
   }
 });
+
+test('notBefore defers the first announcement without changing the cadence', () => {
+  const ev = { id: 'x', type: 'weekly', weekday: 'sunday', time: '8:00', notBefore: '2026-09-21' };
+  const hits = occurrencesBetween(ev, parseUtc('2026-09-14'), parseUtc('2026-10-05'), cycle);
+  assert.deepEqual(hits.map(iso), [
+    '2026-09-27T08:00Z', '2026-10-04T08:00Z',
+  ]);
+
+  // Without it, the skipped Sunday is present and the rest are unchanged.
+  const { notBefore, ...plain } = ev;
+  assert.deepEqual(
+    occurrencesBetween(plain, parseUtc('2026-09-14'), parseUtc('2026-10-05'), cycle).map(iso),
+    ['2026-09-20T08:00Z', '2026-09-27T08:00Z', '2026-10-04T08:00Z']
+  );
+});
+
+test('this Sunday is skipped for Gathering Speed-up, next Sunday is not', () => {
+  const schedule = require('../schedule.json');
+  const sunday = schedule.events.find((e) => e.id === 'skills-sunday');
+  const hits = occurrencesBetween(sunday, parseUtc('2026-09-18'), parseUtc('2026-09-30'), schedule.phaseCycle);
+  assert.deepEqual(hits.map(iso), ['2026-09-27T08:00Z']);
+
+  // And nothing fires for it at its usual ping time this Sunday.
+  const atPingTime = due(schedule, parseUtc('2026-09-20T07:15'), {}, 120);
+  assert.ok(
+    !atPingTime.due.some((d) => d.event.id === 'skills-sunday'),
+    'Gathering Speed-up must stay quiet on 20 Sep'
+  );
+});
