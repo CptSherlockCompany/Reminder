@@ -3,7 +3,7 @@
 
   "defaults": {
     "leadMinutes": 15,
-    "mention": "@1550551558192890047"
+    "mention": "<@&1550551558192890047>"
   },
 
   "phaseCycle": {
