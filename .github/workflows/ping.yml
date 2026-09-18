@@ -41,6 +41,14 @@ jobs:
       - name: Run tests
         run: node --test test/schedule.test.js
 
+      # The ping is sent before state.json is recorded, so a repo that cannot
+      # accept the state commit would re-announce the same event every run
+      # until the grace window closed. Fail here instead, before anything is
+      # posted. Usually means Settings -> Actions -> General -> Workflow
+      # permissions is set to read-only.
+      - name: Verify we can record state before posting anything
+        run: git push --dry-run origin HEAD:${{ github.ref_name }}
+
       - name: Check schedule
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
