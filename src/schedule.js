@@ -20,11 +20,26 @@ function parseUtc(value) {
   return Date.UTC(+y, +mo - 1, +d, +h, +mi, 0, 0);
 }
 
-/** Parse "HH:MM" into minutes past UTC midnight. */
+/**
+ * Parse a time of day into minutes past UTC midnight.
+ *
+ * A single-digit hour is accepted — "8:00" is unambiguous, and a schedule
+ * edited by hand will contain one sooner or later. Rejecting it once took the
+ * whole job down, which is a poor trade for a leading zero.
+ */
 function parseTime(value) {
-  const m = /^(\d{2}):(\d{2})$/.exec(String(value).trim());
-  if (!m) throw new Error(`Not a HH:MM time: ${value}`);
-  return +m[1] * 60 + +m[2];
+  const m = /^(\d{1,2}):(\d{2})$/.exec(String(value).trim());
+  if (!m) throw new Error(`Not a H:MM or HH:MM time: ${JSON.stringify(value)}`);
+  const hours = +m[1];
+  const minutes = +m[2];
+  if (hours > 23 || minutes > 59) throw new Error(`Not a real time of day: ${JSON.stringify(value)}`);
+  return hours * 60 + minutes;
+}
+
+/** The same value as a zero-padded "HH:MM", for building a full timestamp. */
+function normalizeTime(value) {
+  const total = parseTime(value);
+  return String(Math.floor(total / 60)).padStart(2, '0') + ':' + String(total % 60).padStart(2, '0');
 }
 
 /** An event's time(s) of day, as an array — events may run several times a day. */
@@ -68,7 +83,7 @@ function anchorOf(event) {
   const times = timesOf(event);
   if (!event.anchorDate) throw new Error(`No anchorDate on "${event.id}"`);
   if (!times.length) throw new Error(`No time on "${event.id}"`);
-  const ms = parseUtc(`${event.anchorDate}T${times[0]}`);
+  const ms = parseUtc(`${event.anchorDate}T${normalizeTime(times[0])}`);
 
   if (event.weekday) {
     const want = WEEKDAYS[String(event.weekday).toLowerCase()];
@@ -226,6 +241,6 @@ function due(schedule, nowMs, state = {}, graceMinutes = 120) {
 
 module.exports = {
   DAY_MS, WEEK_MS, WEEKDAYS,
-  parseUtc, parseTime, timesOf, weekStart, phaseAt, anchorOf, cycleReady,
+  parseUtc, parseTime, normalizeTime, timesOf, weekStart, phaseAt, anchorOf, cycleReady,
   occurrencesBetween, unconfigured, due, finalDayOfSuppressedRun,
 };

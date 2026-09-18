@@ -379,3 +379,33 @@ test('seeding state prevents a first run from backfilling stale events', () => {
   const later = due(schedule, parseUtc('2026-09-18T16:45'), seeded, 120);
   assert.deepEqual(later.due.map((d) => d.event.id).sort(), ['altar', 'skills-friday']);
 });
+
+test('times are accepted with or without a leading zero', () => {
+  const { parseTime, normalizeTime } = require('../src/schedule.js');
+  assert.equal(parseTime('8:00'), parseTime('08:00'));
+  assert.equal(parseTime('8:05'), 8 * 60 + 5);
+  assert.equal(normalizeTime('8:00'), '08:00');
+  assert.equal(normalizeTime('17:30'), '17:30');
+
+  // A weekly event lands identically either way.
+  const padded = { id: 'a', type: 'weekly', weekday: 'sunday', time: '08:00' };
+  const bare = { id: 'a', type: 'weekly', weekday: 'sunday', time: '8:00' };
+  const window = [parseUtc('2026-09-18'), parseUtc('2026-09-21')];
+  assert.deepEqual(
+    occurrencesBetween(bare, ...window, cycle),
+    occurrencesBetween(padded, ...window, cycle)
+  );
+});
+
+test('an interval anchor works with a single-digit hour too', () => {
+  const ev = { id: 'x', type: 'interval', intervalDays: 14, weekday: 'sunday', anchorDate: '2026-09-27', time: '8:00' };
+  const hits = occurrencesBetween(ev, parseUtc('2026-09-20'), parseUtc('2026-10-20'), cycle);
+  assert.deepEqual(hits.map(iso), ['2026-09-27T08:00Z', '2026-10-11T08:00Z']);
+});
+
+test('a nonsensical time is still rejected', () => {
+  const { parseTime } = require('../src/schedule.js');
+  for (const bad of ['25:00', '12:70', '1200', 'noon', '', '8:0']) {
+    assert.throws(() => parseTime(bad), new RegExp('time'), `should reject ${JSON.stringify(bad)}`);
+  }
+});
