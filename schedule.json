@@ -2,7 +2,7 @@
   "$comment": "All times are UTC. anchorDate: null = still to be confirmed; those events are skipped with a warning until filled in.",
 
   "defaults": {
-    "leadMinutes": 15,
+    "leadMinutes": 45,
     "mention": "<@&900039204313129060>"
   },
 
