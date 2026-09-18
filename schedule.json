@@ -30,7 +30,7 @@
       "name": "Gathering Speed-up Skill",
       "type": "weekly",
       "weekday": "sunday",
-      "time": "08:00"
+      "time": "8:00"
     },
     {
       "id": "slumbers",
@@ -59,7 +59,7 @@
     },
     {
       "id": "shrine",
-      "name": "Shrine",
+      "name": "Battle of Lost Shrine",
       "$comment": "Every other Sunday. anchorDate must be a Sunday; the code rejects it otherwise.",
       "type": "interval",
       "intervalDays": 14,
