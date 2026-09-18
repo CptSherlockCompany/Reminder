@@ -1,4 +1,4 @@
-# LoE Reminder
+# Reminder
 
 Serverless Discord reminders for alliance events. No bot process, no host — a
 GitHub Actions cron job runs a small Node script every 15 minutes, and anything
