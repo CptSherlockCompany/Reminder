@@ -1,11 +1,9 @@
 {
   "$comment": "All times are UTC. anchorDate: null = still to be confirmed; those events are skipped with a warning until filled in.",
-
   "defaults": {
     "leadMinutes": 45,
     "mention": "<@&900039204313129060>"
   },
-
   "phaseCycle": {
     "$comment": "Context only — these weeks are never announced. anchorWeekStart must be the Monday that begins a Confluence week; it exists solely so Altar of Trial can be suppressed during Battle of Disorder weeks.",
     "anchorWeekStart": "2026-10-12",
@@ -16,7 +14,6 @@
       "Battle of Destiny"
     ]
   },
-
   "events": [
     {
       "id": "skills-friday",
@@ -26,20 +23,38 @@
       "time": "17:00"
     },
     {
-      "id": "skills-sunday",
-      "$comment": "Skipped 2026-09-20; first announcement is 2026-09-27.",
-      "notBefore": "2026-09-21",
+      "id": "gathering-confluence",
       "name": "Gathering Speed-up Skill",
+      "$comment": "Confluence weeks only: Thursday midday.",
+      "type": "weekly",
+      "weekday": "thursday",
+      "time": "12:00",
+      "skipDuringPhases": [
+        "Battle of Disorder",
+        "Battle of Destiny"
+      ]
+    },
+    {
+      "id": "gathering-other",
+      "name": "Gathering Speed-up Skill",
+      "$comment": "Every non-Confluence week (both Disorder weeks and Destiny): Sunday morning.",
       "type": "weekly",
       "weekday": "sunday",
-      "time": "8:00"
+      "time": "08:00",
+      "skipDuringPhases": [
+        "Confluence"
+      ]
     },
     {
       "id": "slumbers",
       "name": "Slumbers of City",
       "type": "weekly",
       "weekday": "friday",
-      "times": ["13:00", "14:00", "19:00"]
+      "times": [
+        "13:00",
+        "14:00",
+        "19:00"
+      ]
     },
     {
       "id": "altar",
@@ -49,7 +64,9 @@
       "intervalDays": 2,
       "anchorDate": "2026-09-18",
       "time": "17:00",
-      "skipDuringPhases": ["Battle of Disorder"],
+      "skipDuringPhases": [
+        "Battle of Disorder"
+      ],
       "runsOnFinalDayOfSkippedRun": true
     },
     {

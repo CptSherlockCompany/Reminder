@@ -425,16 +425,33 @@ test('notBefore defers the first announcement without changing the cadence', () 
   );
 });
 
-test('this Sunday is skipped for Gathering Speed-up, next Sunday is not', () => {
+test('Gathering Speed-up follows the phase: Thursday in Confluence, Sunday otherwise', () => {
   const schedule = require('../schedule.json');
-  const sunday = schedule.events.find((e) => e.id === 'skills-sunday');
-  const hits = occurrencesBetween(sunday, parseUtc('2026-09-18'), parseUtc('2026-09-30'), schedule.phaseCycle);
-  assert.deepEqual(hits.map(iso), ['2026-09-27T08:00Z']);
+  const conf = schedule.events.find((e) => e.id === 'gathering-confluence');
+  const other = schedule.events.find((e) => e.id === 'gathering-other');
+  const from = parseUtc('2026-09-14');
+  const to = parseUtc('2026-10-19');
 
-  // And nothing fires for it at its usual ping time this Sunday.
-  const atPingTime = due(schedule, parseUtc('2026-09-20T07:15'), {}, 120);
-  assert.ok(
-    !atPingTime.due.some((d) => d.event.id === 'skills-sunday'),
-    'Gathering Speed-up must stay quiet on 20 Sep'
-  );
+  const all = [
+    ...occurrencesBetween(conf, from, to, schedule.phaseCycle),
+    ...occurrencesBetween(other, from, to, schedule.phaseCycle),
+  ].sort((a, b) => a - b);
+
+  assert.deepEqual(all.map(iso), [
+    '2026-09-17T12:00Z', // Confluence week -> Thursday midday
+    '2026-09-27T08:00Z', // Disorder week 1 -> Sunday morning
+    '2026-10-04T08:00Z', // Disorder week 2 -> Sunday morning
+    '2026-10-11T08:00Z', // Destiny         -> Sunday morning
+    '2026-10-15T12:00Z', // Confluence      -> Thursday midday again
+  ]);
+
+  // Exactly one per week, never both variants in the same week.
+  const weeks = all.map((ms) => iso(weekStart(ms)));
+  assert.equal(new Set(weeks).size, weeks.length, 'two announcements landed in one week');
+});
+
+test('this Sunday stays quiet because it falls in a Confluence week', () => {
+  const schedule = require('../schedule.json');
+  const res = due(schedule, parseUtc('2026-09-20T07:15'), {}, 120);
+  assert.deepEqual(res.due.map((d) => d.event.id), [], 'nothing is due on 20 Sep morning');
 });
