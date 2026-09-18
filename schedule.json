@@ -21,7 +21,6 @@
     {
       "id": "skills-friday",
       "name": "Training Speed-up Skill",
-      "note": "Right after Altar of Trial.",
       "type": "weekly",
       "weekday": "friday",
       "time": "17:00"
