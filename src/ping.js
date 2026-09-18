@@ -65,8 +65,10 @@ function buildEmbed(item) {
   // "##" is a markdown heading, which Discord renders in embed descriptions two
   // steps above body text. Headings are already bold, so the ** is dropped.
   const lines = [`## <t:${secs}:F> · <t:${secs}:R>`];
+  // The phase cycle is not shown. It still runs behind the scenes, deciding
+  // whether Altar of Trial is suppressed this week, but readers only need to
+  // know that an event is happening and when.
   if (item.event.note) lines.push(item.event.note);
-  if (item.phase) lines.push(`_Current week: ${item.phase.phase}_`);
 
   return {
     title: item.event.name,
