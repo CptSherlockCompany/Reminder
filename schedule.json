@@ -63,6 +63,7 @@
       "type": "weekly",
       "weekday": "saturday",
       "time": "14:00",
+      "leadMinutes": 15,
       "skipDuringPhases": [
         "Battle of Disorder",
         "Battle of Destiny"
