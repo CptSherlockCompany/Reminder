@@ -65,9 +65,10 @@ function buildEmbed(item) {
   // intended minute, which would make that line a lie. <t:...:R> is rendered by
   // Discord at read time, so it stays correct however late the message is - and
   // in each reader's own timezone.
-  // "##" is a markdown heading, which Discord renders in embed descriptions two
-  // steps above body text. Headings are already bold, so the ** is dropped.
-  const lines = [`## <t:${secs}:F> · <t:${secs}:R>`];
+  // "###" is the smallest markdown heading, which Discord renders in embed
+  // descriptions one step above body text. Headings are already bold, so the **
+  // is dropped.
+  const lines = [`### <t:${secs}:F> · <t:${secs}:R>`];
   // The phase cycle is not shown. It still runs behind the scenes, deciding
   // whether Altar of Trial is suppressed this week, but readers only need to
   // know that an event is happening and when.
