@@ -355,6 +355,14 @@ test('Shrine runs every other Sunday from its anchor', () => {
   for (const h of hits) assert.equal(new Date(h).getUTCDay(), 0, `${iso(h)} is not a Sunday`);
 });
 
+test('Holy Mountain runs only on the Saturday of Confluence weeks', () => {
+  const schedule = require('../schedule.json');
+  const { occurrencesBetween } = require('../src/schedule.js');
+  const holy = schedule.events.find((e) => e.id === 'holy-mountain');
+  const hits = occurrencesBetween(holy, parseUtc('2026-09-14'), parseUtc('2026-11-16'), schedule.phaseCycle);
+  assert.deepEqual(hits.map(iso), ['2026-09-19T14:00Z', '2026-10-17T14:00Z', '2026-11-14T14:00Z']);
+});
+
 test('seeding state prevents a first run from backfilling stale events', () => {
   const schedule = require('../schedule.json');
   const { occurrencesBetween, unconfigured } = require('../src/schedule.js');

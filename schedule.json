@@ -57,6 +57,18 @@
       ]
     },
     {
+      "id": "holy-mountain",
+      "name": "Battle of the Holy Mountain",
+      "$comment": "Confluence weeks only: Saturday afternoon.",
+      "type": "weekly",
+      "weekday": "saturday",
+      "time": "14:00",
+      "skipDuringPhases": [
+        "Battle of Disorder",
+        "Battle of Destiny"
+      ]
+    },
+    {
       "id": "altar",
       "name": "Altar of Trial",
       "$comment": "Quiet through the Disorder weeks except their final day, the Sunday that ends the second one.",
