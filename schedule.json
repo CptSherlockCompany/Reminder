@@ -84,8 +84,11 @@
     {
       "id": "showdown",
       "name": "Alliance Showdown",
-      "type": "weekly",
+      "$comment": "Every other Thursday, on the weeks Joint Competition does not run.",
+      "type": "interval",
+      "intervalDays": 14,
       "weekday": "thursday",
+      "anchorDate": "2026-10-01",
       "time": "12:00"
     },
     {

@@ -284,10 +284,15 @@ test('the live schedule matches the known September/October calendar', () => {
     ['2026-09-21T12:00Z', '2026-10-05T12:00Z', '2026-10-19T12:00Z']
   );
 
-  // Showdown is weekly and unaffected by the phase cycle.
-  assert.deepEqual(
-    occurrencesBetween(byId.showdown, from, parseUtc('2026-10-10T00:00'), schedule.phaseCycle).map(iso),
-    ['2026-09-24T12:00Z', '2026-10-01T12:00Z', '2026-10-08T12:00Z']
+  // Showdown alternates with Joint Competition: it skips the first Disorder
+  // week, runs in the second, and stays a week away from Joint throughout.
+  const showdown = occurrencesBetween(byId.showdown, from, to, schedule.phaseCycle).map(iso);
+  assert.deepEqual(showdown, ['2026-10-01T12:00Z', '2026-10-15T12:00Z']);
+  const jointWeeks = occurrencesBetween(byId.joint, from, to, schedule.phaseCycle)
+    .map((occ) => weekStart(occ));
+  assert.ok(
+    !showdown.some((d) => jointWeeks.includes(weekStart(parseUtc(d.slice(0, 16))))),
+    `Showdown shared a week with Joint Competition: ${showdown}`
   );
 });
 
