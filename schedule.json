@@ -107,6 +107,15 @@
       "weekday": "monday",
       "anchorDate": "2026-09-21",
       "time": "12:00"
+    },
+    {
+      "id": "tournament-registration",
+      "name": "Alliance Tournament: Registration",
+      "type": "interval",
+      "intervalDays": 14,
+      "weekday": "thursday",
+      "anchorDate": "2026-11-05",
+      "time": "12:00"
     }
   ]
 }
